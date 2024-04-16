@@ -3,10 +3,10 @@ Oncoder takes cell-free DNA (cfDNA) from human blood as input and predicts tumor
 
 ## Installation
 This code doesn't require a special installation process if Python and necessary libraries are already installed. Download the Oncoder.py file and import in your Python script:
-'''python
+```python
 import Oncoder
 from Oncoder import Autoencoder
-'''
+```
 
 ## Usage
 see the deconvolution.ipynb notebook.
