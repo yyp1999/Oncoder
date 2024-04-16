@@ -9,7 +9,7 @@ from Oncoder import Autoencoder
 ```
 
 ## Usage
-see the deconvolution.ipynb notebook.
+See the deconvolution.ipynb notebook.
 
 ## File instruction
 The 'data' directory contains three type of datasets: reference_data, HCC_data and normal_data.
@@ -19,4 +19,3 @@ The 'data' directory contains three type of datasets: reference_data, HCC_data a
 
   _HCC_data and normal_data_：
   Chip-based methylation data from GSE129374 and GSE41169. Data missing specific probes have been excluded.
-  
