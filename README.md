@@ -14,9 +14,9 @@ see the deconvolution.ipynb notebook.
 ## File instruction
 The 'data' directory contains three type of datasets: reference_data, HCC_data and normal_data.
 
-  _reference_data_
+  _reference_data_：
   A matrix used to generate simulation patients data and the prior beta distribution of the reference methylation atlas.  Index should be CpG and columns should be sample type('GSE40279','LIHC')
 
-  _HCC_data and normal_data_
+  _HCC_data and normal_data_：
   Chip-based methylation data from GSE129374 and GSE41169. Data missing specific probes have been excluded.
   
