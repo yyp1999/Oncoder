@@ -174,7 +174,7 @@ def evaluateBetapara(filepath, typename):
     typename: the name of the data type need to fit beta distribution
     """
     n = pd.read_csv(filepath, sep='\t', index_col=0, header=0)
-    n.replace({0: 0.0001, 1: 0.9999}, inplace=True)  # be careful
+    n.replace({0: 0.0001, 1: 0.9999}, inplace=True)
     n = n.filter(like=typename)
     dic = {}
     except_cpg = []
@@ -217,9 +217,7 @@ def training(model, data_loader, betadf, epochs=256, seed=1):
             reproducibility(seed)
             optimizer.zero_grad()
             x_recon, comp_prop, methy = model(data)
-            batch_loss = 0.25 * F.l1_loss(comp_prop, label) + 0.25 * F.l1_loss(x_recon, data) + 0.25 * mylossH(methy,
-                                                                                                               'H') + 0.5 * mylossT(
-                methy, 'T')
+            batch_loss = 0.25 * F.l1_loss(comp_prop, label) + 0.25 * F.l1_loss(x_recon, data) + 0.25 * mylossH(methy,'H') + 0.5 * mylossT(methy, 'T')
             batch_loss.backward()
             optimizer.step()
 
@@ -256,9 +254,9 @@ def train_Oncoder(train_x, train_y, refdatapath, model_name=None, batch_size=128
     showloss(loss)
     print('reconstruction loss: ')
     showloss(recon_loss)
-    print('Health signature loss: ')
+    print('Health NLL loss: ')
     showloss(methyH_loss)
-    print('Cancer signature loss: ')
+    print('Cancer NLL loss: ')
     showloss(methyT_loss)
     if model_name is not None:
         print('Model is saved')
@@ -287,14 +285,13 @@ def generate_simulated_data(refdata, prior=[0.9, 0.1], samplenum=5000, random_st
 
     """
     print("reading ref dataset")
-    n = pd.read_csv(refdata, sep='\t', index_col=0, header=0)  # real ref data
+    n = pd.read_csv(refdata, sep='\t', index_col=0, header=0)
     n.columns = [i.split('.')[0] for i in n.columns]
-    to_drop = [col for col in n.columns if "Liver" in col]  # delete the liver columns
+    to_drop = [col for col in n.columns if "Liver" in col]  # delete the adjacent non-tumor tissues columns
     n.drop(to_drop, axis=1, inplace=True)
-    n = n.T  # index should be sample types, columns should be cpg (dirichlet distribution need)
+    n = n.T
     n['sampletype'] = n.index
     n.index = range(len(n))
-    num_sampletype = len(n["sampletype"].value_counts())  # 2
     cpgname = n.columns[:-1]
     sampletype_groups = n.groupby("sampletype").groups
     n.drop(columns="sampletype", inplace=True)
@@ -303,7 +300,7 @@ def generate_simulated_data(refdata, prior=[0.9, 0.1], samplenum=5000, random_st
     np.random.seed(random_state)
     np.set_printoptions(precision=4, suppress=True)
     if method == 'Dirichlet':
-        prop = np.random.dirichlet(prior, samplenum)  # dirichlet distribution generate data
+        prop = np.random.dirichlet(prior, samplenum)
         prop = prop / np.sum(prop, axis=1).reshape(-1, 1)
     elif method == 'Uniform':
         data_1 = np.random.uniform(prior[0], 1, samplenum)
@@ -311,11 +308,9 @@ def generate_simulated_data(refdata, prior=[0.9, 0.1], samplenum=5000, random_st
         prior_distribution_data = np.column_stack((data_1, data_2))
         prop = prior_distribution_data / np.sum(prior_distribution_data, axis=1, keepdims=True)
     sample = np.zeros((prop.shape[0], n.shape[1]))
-    allsamplename = sampletype_groups.keys()
     prop = pd.DataFrame(prop, columns=sampletype_groups.keys())
     for i, sample_prop in tqdm(prop.iterrows()):
-        sample[i] = sample_prop["GSE40279"] * n.iloc[choice(sampletype_groups["GSE40279"])] + sample_prop["LIHC"] * \
-                    n.iloc[choice(sampletype_groups["LIHC"])]
-    train_x = pd.DataFrame(sample, columns=cpgname)  # train data prepare and the train data need not to normaliza
+        sample[i] = sample_prop["GSE40279"] * n.iloc[choice(sampletype_groups["GSE40279"])] + sample_prop["LIHC"] * n.iloc[choice(sampletype_groups["LIHC"])]
+    train_x = pd.DataFrame(sample, columns=cpgname)
     train_y = prop
     return train_x.values, train_y.values
