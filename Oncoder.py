@@ -308,9 +308,59 @@ def generate_simulated_data(refdata, prior=[0.9, 0.1], samplenum=5000, random_st
         prior_distribution_data = np.column_stack((data_1, data_2))
         prop = prior_distribution_data / np.sum(prior_distribution_data, axis=1, keepdims=True)
     sample = np.zeros((prop.shape[0], n.shape[1]))
-    prop = pd.DataFrame(prop, columns=sampletype_groups.keys())
+    prop = pd.DataFrame(prop, columns=['H','T'])
     for i, sample_prop in tqdm(prop.iterrows()):
-        sample[i] = sample_prop["GSE40279"] * n.iloc[choice(sampletype_groups["GSE40279"])] + sample_prop["LIHC"] * n.iloc[choice(sampletype_groups["LIHC"])]
+        sample[i] = sample_prop["H"] * n.iloc[choice(sampletype_groups["GSE40279"])] + sample_prop["T"] * n.iloc[choice(sampletype_groups["LIHC"])]
     train_x = pd.DataFrame(sample, columns=cpgname)
     train_y = prop
     return train_x.values, train_y.values
+
+def adaptive_learning(model, X, y, refdatapath, epochs=256, seed=1, batch_size=128):
+    print('adaptive stage')
+    data_loader = DataLoader(dataloader(X, y), batch_size=batch_size, shuffle=True)
+    decoder_parameters = [{'params': [p for n, p in model.named_parameters() if 'decoder' in n]}]
+    encoder_parameters = [{'params': [p for n, p in model.named_parameters() if 'encoder' in n]}]
+    optimizerD = torch.optim.Adam(decoder_parameters, lr=1e-4)
+    optimizerE = torch.optim.Adam(encoder_parameters, lr=1e-4)
+    optimizer = Adam(model.parameters(), lr=1e-4)
+    loss = []
+    recon_loss = []
+    _, H_beta, _ = evaluateBetapara(refdatapath, 'GSE40279')
+    _, T_beta, _ = evaluateBetapara(refdatapath, 'LIHC')
+    betadf = [H_beta, T_beta]
+    mylossH = NLLloss(betadf[0]).to(device)
+    mylossT = NLLloss(betadf[1]).to(device)
+    methyH_loss = []
+    methyT_loss = []
+    
+    model.train()
+    model.state = 'train'
+    for i in tqdm(range(epochs)):
+        for k, (data, label) in enumerate(data_loader):
+            reproducibility(seed)
+            optimizer.zero_grad()
+            x_recon, comp_prop, methy = model(data)
+            batch_loss = 0.25 * F.l1_loss(comp_prop, label) + 0.25 * F.l1_loss(x_recon, data) + 0.25 * mylossH(methy,'H') + 0.5 * mylossT(methy, 'T')
+            batch_loss.backward()
+            optimizer.step()
+
+            optimizerD.zero_grad()
+            x_recon, _, methy = model(data)
+            batch_loss = F.l1_loss(x_recon, data) + mylossH(methy, 'H') + mylossT(methy, 'T')
+            batch_loss.backward()
+            optimizerD.step()
+
+            optimizerE.zero_grad()
+            x_recon, comp_prop, _ = model(data)
+            batch_loss = F.l1_loss(label, comp_prop) + F.l1_loss(x_recon, data)
+            batch_loss.backward()
+            optimizerE.step()
+
+            loss.append(F.l1_loss(label, comp_prop).cpu().detach().numpy())
+            recon_loss.append(F.l1_loss(x_recon, data).cpu().detach().numpy())
+            methyH_loss.append(mylossH(methy, 'H').cpu().detach().numpy())
+            methyT_loss.append(mylossT(methy, 'T').cpu().detach().numpy())
+        
+    model.eval()
+    model.state = 'test'
+    return model, loss, recon_loss, methyH_loss, methyT_loss
