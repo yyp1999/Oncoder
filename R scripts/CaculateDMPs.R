@@ -11,7 +11,7 @@ library(ggplot2)
 
 
 ##### Caculate DMPs for PRAD #####
-martix_names<-c("tumor_PRAD.tsv","normal_PRAD.tsv", "normal_plasma.tsv","ctProstate_Resistant.tsv","ctProstate_Sensitive.tsv")
+matrix_names<-c("tumor_PRAD.tsv","normal_PRAD.tsv", "normal_plasma.tsv","ctProstate_Resistant.tsv","ctProstate_Sensitive.tsv")
 matrix_list <- lapply(martix_names,function(x){read.table(paste0(x),header = T,sep = "\t",row.names = 1)})
 names(matrix_list) <- sub("\\.tsv$", "", martix_names)
 
